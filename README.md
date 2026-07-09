@@ -15,6 +15,7 @@ The native status screen shows the app once the HTTP server, model runtime, cont
 - [Repository Layout](#repository-layout)
 - [Docs](#docs)
 - [Runtime APIs](#runtime-apis)
+- [Credits](#credits)
 
 ## Models
 
@@ -99,3 +100,7 @@ The roofline view frames the bridge as memory-bound work, which matches the mat-
 - `POST /v1/messages`
 - `GET /gpu-test`
 - `POST /gpu/offload`
+
+## Credits
+
+Aether would not be possible without the work shared by the PS4 homebrew community, especially [LightningMods/PS4-Store](https://github.com/LightningMods/PS4-Store), [LightningMods](https://github.com/LightningMods), [golden](https://github.com/jogolden), and [SiSTR0](https://github.com/SiSTR0).
