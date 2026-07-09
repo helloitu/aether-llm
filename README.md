@@ -4,7 +4,23 @@ Aether is a PS4 homebrew LLM server with a native PS4 UI, a browser UI, OpenAI-c
 
 ![Model loaded status](.images/model_loaded_status.jpg)
 
+The native status screen shows the app once the HTTP server, model runtime, controller input, and GPU bridge checks are visible from the console UI.
+
+## Summary
+
+- [Models](#models)
+- [Architecture](#architecture)
+- [Screenshots](#screenshots)
+- [Evaluation Graphs](#evaluation-graphs)
+- [Repository Layout](#repository-layout)
+- [Docs](#docs)
+- [Runtime APIs](#runtime-apis)
+
+## Models
+
 The runtime model directory is `/user/data/llm_models/`. Put `.gguf` files there, then load and unload them from the native UI or Web UI.
+
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -25,9 +41,33 @@ flowchart LR
 
 ![Models list](.images/models_list.jpg)
 
+The models view lists GGUF files from `/user/data/llm_models/` and keeps load/unload control available from the controller.
+
 ![Logs](.images/logs.jpg)
 
+The logs view exposes recent llama.cpp and server output directly on the PS4, which is useful when the browser UI is unavailable.
+
 ![Config](.images/config.jpg)
+
+The config view edits the same defaults used by API requests, including token limits, sampling temperature, and API response mode.
+
+## Evaluation Graphs
+
+![Evaluation context](.images/evalgraphcontext.png)
+
+Decode throughput drops as prompt length grows, so long contexts are the main pressure point for interactive use on the base console.
+
+![Evaluation throughput](.images/evalgraphthroughput.png)
+
+The Qwen run separates prompt prefill from decode speed, making the slower token generation path clear.
+
+![GPU bandwidth](.images/gpugraphbandwidth.png)
+
+The GNM mat-vec test improves with larger matrix rows but remains below the theoretical memory bandwidth ceiling.
+
+![GPU roofline](.images/gpugraphroofline.png)
+
+The roofline view frames the bridge as memory-bound work, which matches the mat-vec path targeted by the GGML offload experiment.
 
 ## Repository Layout
 
