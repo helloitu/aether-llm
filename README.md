@@ -78,7 +78,6 @@ The roofline view frames the bridge as memory-bound work, which matches the mat-
 - `external/llama.cpp/`: trimmed llama.cpp and GGML sources used by the PS4 build.
 - `external/create-fself/`: SELF packaging helper.
 - `sce_sys/`: PS4 package assets, including the launch background.
-- `Media/jb.prx`: jailbreak helper loaded before UI and GPU setup.
 - `shaders/`: source shaders for the GNM bridge.
 
 ## Docs
