@@ -1,0 +1,29 @@
+FROM openorbisofficial/toolchain:latest
+
+USER root
+
+# Original image ships clang 10 (2020) which crashes parsing modern llama.cpp.
+# Install clang 14 from llvm.org apt repo so we have proper C++17/20 support
+# while keeping the OOSDK sysroot/headers/libs unchanged.
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        wget gnupg ca-certificates lsb-release software-properties-common && \
+    wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
+    add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-14 main" && \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        clang-14 lld-14 && \
+    ln -sf /usr/bin/clang-14   /usr/bin/clang   && \
+    ln -sf /usr/bin/clang++-14 /usr/bin/clang++ && \
+    ln -sf /usr/bin/lld-14     /usr/bin/lld     && \
+    ln -sf /usr/bin/ld.lld-14  /usr/bin/ld.lld  && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN clang --version && ld.lld --version
+
+# Patch OpenOrbis's make_fself.py for Python 3. The original script was written
+# for Python 2 and mixes text strings with binary data.
+COPY tools/patch_make_fself_py3.py /tmp/patch_make_fself_py3.py
+RUN python3 /tmp/patch_make_fself_py3.py && \
+    grep 'fromhex' /lib/OpenOrbisSDK/scripts/make_fself.py

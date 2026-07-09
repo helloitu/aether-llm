@@ -1,0 +1,12 @@
+build/
+*.pkg
+eboot.bin
+homebrew.elf
+sce_sys/param.sfo
+*.o
+*.elf
+*.oelf
+*.log
+*.csv
+log.bin
+ps4_klog*.txt

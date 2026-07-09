@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aether</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:system-ui,sans-serif;margin:0;background:#05020a;color:#f1e9ff}
+header{padding:14px 18px;background:#10071b;border-bottom:1px solid #3a1d5a;font-weight:600;color:#d9b4ff}
+.wrap{max-width:900px;margin:0 auto;padding:16px;display:grid;gap:16px}
+.card{background:#150c22;border:1px solid #3a1d5a;border-radius:10px;padding:14px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button{background:#8b5cf6;color:#0b0512;border:0;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:600}
+button.sec{background:#2d1745;color:#f1e9ff}
+select,textarea,input{background:#08040d;color:#f1e9ff;border:1px solid #4b2772;border-radius:8px;padding:8px}
+textarea{width:100%;min-height:80px}
+#chat{white-space:pre-wrap;background:#08040d;border:1px solid #3a1d5a;border-radius:8px;padding:12px;min-height:120px}
+#log{white-space:pre-wrap;font:12px/1.4 monospace;background:#08040d;border:1px solid #3a1d5a;border-radius:8px;padding:10px;max-height:240px;overflow:auto}
+small{color:#bca8ff}
+</style>
+</head>
+<body>
+<header>Aether <small id="ver"></small></header>
+<div class="wrap">
+<div class="card"><div class="row"><b>Models</b><button class="sec" onclick="loadModels()">Refresh</button><span id="cur" style="margin-left:auto"></span></div><div class="row" style="margin-top:8px"><select id="models"></select><button onclick="doLoad()">Load</button><button class="sec" onclick="doUnload()">Unload</button></div></div>
+<div class="card"><div class="row"><b>GPU Bridge</b><button class="sec" onclick="gpuTest()">Self-test</button><button class="sec" onclick="gpuOffload(true)">Enable offload</button><button class="sec" onclick="gpuOffload(false)">Disable offload</button><span id="gpu" style="margin-left:auto"></span></div></div>
+<div class="card"><b>Chat</b><textarea id="prompt" placeholder="Ask something...">Hello! Who are you?</textarea><div class="row" style="margin:8px 0"><label>max_tokens <input id="mt" type="number" value="64" style="width:80px"></label><label>temp <input id="tp" type="number" step="0.1" value="0.7" style="width:70px"></label><label>api <select id="api"><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option></select></label><button class="sec" onclick="saveConfig()">Save defaults</button><button onclick="send()">Send</button></div><div id="chat"></div></div>
+<div class="card"><div class="row"><b>Benchmark sampler</b><span id="bstat" style="margin-left:auto"><small>idle</small></span></div><div class="row" style="margin-top:8px"><label>context lengths <input id="bctx" value="128,256,512,1024,2048" style="width:190px"></label><label>repeats <input id="brep" type="number" value="3" style="width:60px"></label><label>max_tokens <input id="bmt" type="number" value="64" style="width:80px"></label><label>temp <input id="btp" type="number" step="0.1" value="0.7" style="width:70px"></label><button onclick="runSampler(this)">Run sampler, download CSV</button></div><small>Sweeps prompt sizes against the loaded model and downloads one CSV row per run.</small></div>
+<div class="card"><div class="row"><b>Logs</b><button class="sec" onclick="loadLogs()">Refresh</button></div><div id="log"></div></div>
+</div>
+<script>
+let configured=false;
+async function j(u,o){const r=await fetch(u,o);return r.json()}
+async function loadModels(){const d=await j('/v1/models');const s=document.getElementById('models');s.innerHTML='';d.data.forEach(m=>{const o=document.createElement('option');o.value=o.textContent=m.id;s.appendChild(o)});status()}
+async function status(){const st=await j('/status');document.getElementById('ver').textContent='v'+st.version+' @ '+st.ip;document.getElementById('cur').textContent=st.model_loaded?('loaded: '+st.loaded_model):'no model loaded';const g=st.gpu||{},cm=Number(g.cache_mb||0);document.getElementById('gpu').textContent='ready '+(g.ready?'yes':'no')+' | test '+(g.selftest_ok?'ok':'no')+' | offload '+(g.offload_enabled?'on':'off')+' | cand '+(g.candidates||0)+' | hits '+(g.hits||0)+' | fb '+(g.fallbacks||0)+' | cache '+cm.toFixed(1)+' MB';if(!configured){document.getElementById('mt').value=st.default_max_tokens;document.getElementById('tp').value=st.default_temperature;configured=true}if(st.api_type)document.getElementById('api').value=st.api_type}
+async function gpuTest(){document.getElementById('gpu').textContent='running self-test...';await j('/gpu-test');status();loadLogs()}
+async function gpuOffload(enabled){await j('/gpu/offload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});status();loadLogs()}
+async function doLoad(){const m=document.getElementById('models').value;document.getElementById('cur').textContent='loading '+m+'...';await j('/load',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:m})});status()}
+async function doUnload(){await j('/unload',{method:'POST'});status()}
+async function saveConfig(){await j('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({max_tokens:+document.getElementById('mt').value,temperature:+document.getElementById('tp').value,api_type:document.getElementById('api').value})});status()}
+async function send(){const p=document.getElementById('prompt').value,c=document.getElementById('chat');c.textContent='...generating...';const api=document.getElementById('api').value;const r=await j(api==='anthropic'?'/v1/messages':'/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:p}],max_tokens:+document.getElementById('mt').value,temperature:+document.getElementById('tp').value})});c.textContent=api==='anthropic'&&r.content&&r.content[0]?r.content[0].text:((r.choices&&r.choices[0]&&r.choices[0].message)?r.choices[0].message.content:JSON.stringify(r));loadLogs()}
+async function loadLogs(){const r=await fetch('/logs');document.getElementById('log').textContent=await r.text()}
+function fx(v,n){return(v==null||isNaN(v))?'':(+v).toFixed(n==null?2:n)}
+const SCOLS=['run','target_ctx','model','prompt_tokens','gen_tokens','prefill_us','ttft_us','decode_us','total_us','pp_tok_s','tg_tok_s','tpot_ms','eff_bw_gbs','model_mb','avail_dmem_mb','gpu_hits','gpu_calls','gpu_fallbacks','client_rtt_ms','http_overhead_ms'];
+async function runSampler(btn){const st=document.getElementById('bstat'),ctxs=document.getElementById('bctx').value.split(',').map(s=>+s.trim()).filter(x=>x>0),reps=Math.max(1,+document.getElementById('brep').value||1),mt=+document.getElementById('bmt').value||64,tp=+document.getElementById('btp').value||0.7;if(!ctxs.length){st.innerHTML='<small>no context lengths</small>';return}btn.disabled=true;const rows=[SCOLS.join(',')];let done=0,total=ctxs.length*reps;for(let r=0;r<reps;r++){for(const c of ctxs){st.innerHTML='<small>sampling ctx='+c+' ('+(++done)+'/'+total+')</small>';const prompt='word '.repeat(Math.max(1,Math.round(c*0.75))),t0=performance.now();let j;try{j=await(await fetch('/v1/completions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:prompt,max_tokens:mt,temperature:tp})})).json()}catch(e){st.innerHTML='<small>request failed at ctx='+c+'</small>';continue}const rtt=performance.now()-t0,t=j.timing||{},ov=rtt-((t.total_us||0)/1000);rows.push([r,c,'"'+(j.model||'')+'"',t.prompt_tokens||0,t.gen_tokens||0,t.prefill_us||0,t.ttft_us||0,t.decode_us||0,t.total_us||0,fx(t.pp_tok_s),fx(t.tg_tok_s),fx(t.tpot_ms),fx(t.eff_bw_gbs,4),fx(t.model_mb),fx(t.avail_dmem_mb),t.gpu_hits||0,t.gpu_calls||0,t.gpu_fallbacks||0,fx(rtt),fx(ov)].join(','))}}st.innerHTML='<small>done: '+(rows.length-1)+' rows</small>';btn.disabled=false;loadLogs();const b=new Blob([rows.join('\n')],{type:'text/csv'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='ps4_llm_metrics.csv';a.click();URL.revokeObjectURL(u)}
+loadModels();loadLogs();setInterval(status,4000)
+</script>
+</body>
+</html>
